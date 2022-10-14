@@ -1,0 +1,123 @@
+{% extends "watchlobby/layout.html" %}
+{% load static %}
+{% load sass_tags %}
+
+{% block nav_url %}
+<li>
+    <div class="change_url" id="change_url_nav">
+        <input type="checkbox" id="change_url_checkbox">
+        <label class="change_url__face" for="change_url_checkbox">
+            <div class="change_url__text" id="change_url_text">Change Video</div>
+        </label>
+            <div class="change_url__textbox" id="change_url_textbox">
+                <input type="text" class="new_url" id="new_url" placeholder="Enter Video URL... ">
+                <div class="url_submit" id="url_submit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="arrow" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z"/>
+                      </svg>
+                </div>
+            </div>
+    </div>
+
+</li>
+
+{% endblock %}
+{% block nav %}
+<li>
+            <div class="dropdown">
+                <input type="checkbox" id="dropdown_checkbox">
+                <label class="dropdown__face" for="dropdown_checkbox">
+                    <div class="dropdown__text" id="current_username">{{request.session.username}}</div>
+                </label>
+                <ul class="dropdown__items">
+                    <li>
+                        <div class="username_input">
+                            <input type="text" class="input_text" placeholder="Change Username..." id="username_input_text">
+                            <div class="chat_submit" id="username_submit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"  class="arrow" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z"/>
+                                  </svg>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+</li>
+{% endblock %}
+{% block body %}
+
+{{ room_info.room_url|json_script:"room_url" }}
+{{ room_info.current_vid|json_script:"current_vid" }}
+{{ request.session.username|json_script:"current_user" }}
+
+<div class="room_container" id="room_container">
+    <div class="player_container" id="player_container_id">
+        <div class="player_overlay" id="player_overlay"></div>
+            <div id="bar_container" class="bar_container">
+                <div class="play_pause" id="play_pause">
+                    <svg class="icon play" id="play" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><path fill="currentColor" d="M7 28a1 1 0 0 1-1-1V5a1 1 0 0 1 1.482-.876l20 11a1 1 0 0 1 0 1.752l-20 11A1 1 0 0 1 7 28Z"/></svg>
+                    <svg class="icon pause" id="pause" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><path fill="currentColor" d="M12 6h-2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm10 0h-2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>
+                </div>
+                <div class="volume" id="volume">
+                    <div class="volume_range_container">
+                        <div class="volume_bar" id="volume_bar">
+                            <div class="volume_bar_progress" id="volume_progress">
+                                <div class="volume_handle"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="volume_icons" id="volume_icons">
+                        <svg class="icon volume_up"   id="volume_up" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><path fill="currentColor" d="m27.16 8.08l-1.53 1.29a10 10 0 0 1-.29 13.23l1.47 1.4a12 12 0 0 0 .35-15.88Z"/><path fill="currentColor" d="M21.58 12a6 6 0 0 1-.18 7.94l1.47 1.36a8 8 0 0 0 .23-10.59zM18 30a1 1 0 0 1-.71-.3L9.67 22H3a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h6.67l7.62-7.7a1 1 0 0 1 1.41 0a1 1 0 0 1 .3.7v26a1 1 0 0 1-1 1z"/></svg>
+                        <svg class="icon volume_down" id="volume_down" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><path fill="currentColor" d="M25.1 10.66L23.58 12a6 6 0 0 1-.18 7.94l1.47 1.36a8 8 0 0 0 .23-10.59zM20 30a1 1 0 0 1-.71-.3L11.67 22H5a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h6.67l7.62-7.7a1 1 0 0 1 1.41 0a1 1 0 0 1 .3.7v26a1 1 0 0 1-1 1z"/></svg>
+                        <svg class="icon volume_mute" id="volume_mute" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><path fill="currentColor" d="M31 12.41L29.59 11L26 14.59L22.41 11L21 12.41L24.59 16L21 19.59L22.41 21L26 17.41L29.59 21L31 19.59L27.41 16L31 12.41zM18 30a1 1 0 0 1-.71-.3L9.67 22H3a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h6.67l7.62-7.7a1 1 0 0 1 1.41 0a1 1 0 0 1 .3.7v26a1 1 0 0 1-1 1z"/></svg>
+                    </div>
+                </div>
+                <div class="video_time" id="video_time">00:00 / 00:00</div>
+                <div id="bar" class="bar">
+                    <div id="bar_progress" class="bar_progress">
+                        <div id="handle" class="handle"></div>
+                    </div>
+                </div>
+                <input type="checkbox" id="open_chat_checkbox">
+                <label class="open_chat__face" for="open_chat_checkbox">
+                    <div class="open_chat" id="open_chat">
+                        <svg class="icon chat" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 16 16"><path fill="currentColor" d="M14 0a2 2 0 0 1 2 2v12.793a.5.5 0 0 1-.854.353l-2.853-2.853a1 1 0 0 0-.707-.293H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12z"/></svg>
+                        <span id="chat_notify_fullscreen" class="chat_notify"></span>
+                    </div>
+                </label>
+                <div class="fullscreen" onclick="toggle_fullscreen(); return false" id="fullscreen">
+                    <svg  class="icon fullscreen" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><g fill="none"><path d="M0 0h24v24H0z"/><path fill="currentColor" d="M9.793 12.793a1 1 0 0 1 1.497 1.32l-.083.094L6.414 19H9a1 1 0 0 1 .117 1.993L9 21H4a1 1 0 0 1-.993-.883L3 20v-5a1 1 0 0 1 1.993-.117L5 15v2.586l4.793-4.793ZM20 3a1 1 0 0 1 .993.883L21 4v5a1 1 0 0 1-1.993.117L19 9V6.414l-4.793 4.793a1 1 0 0 1-1.497-1.32l.083-.094L17.586 5H15a1 1 0 0 1-.117-1.993L15 3h5Z"/></g></svg>
+                    <svg class="icon exit_fullscreen" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><g fill="none"><path d="M0 0h24v24H0z"/><path fill="currentColor" d="M11 12a1 1 0 0 1 .993.883L12 13v5a1 1 0 0 1-1.993.117L10 18v-2.586l-5.293 5.293a1 1 0 0 1-1.497-1.32l.083-.094L8.586 14H6a1 1 0 0 1-.117-1.993L6 12h5Zm8.293-8.707a1 1 0 0 1 1.497 1.32l-.083.094L15.414 10H18a1 1 0 0 1 .117 1.993L18 12h-5a1 1 0 0 1-.993-.883L12 11V6a1 1 0 0 1 1.993-.117L14 6v2.586l5.293-5.293Z"/></g></svg>
+                </div>
+            </div>
+        <div id="video_player">
+
+        </div>
+    </div>
+    <div class="chat_container" id="chat_container">
+        <div class="tabs">
+            <div class="chat" id="chat_button"><p>Chat <span id="chat_notify" class="chat_notify"></span></p></div>
+            <div class="online" id="users_button">Users (<span id="user_count"></span>)</div>
+        </div>
+            <ul id="chat_box_list" class="chat_list">
+                <label for="open_chat_checkbox">
+                    <div class="close_chat" id="close_chat">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><path fill="currentColor" d="M15.59 7L12 10.59L8.41 7L7 8.41L10.59 12L7 15.59L8.41 17L12 13.41L15.59 17L17 15.59L13.41 12L17 8.41L15.59 7Z"/></svg>
+                    </div>
+                </label>
+                <li class="welcome_message">Welcome!</li>
+            </ul>
+            <ul class="user_list" id="user_list">
+                <li class="users_online_text">Users Online: </li>
+            </ul>
+            <div class="chat_input" id="chat_input">
+                <input placeholder="Write message..." autocomplete="off" type="text" id="input" class="input_text">
+                <div class="chat_submit" id="submit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="arrow" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z"/>
+                      </svg>
+                </div>
+            </div>  
+    </div>
+</div>
+{% endblock %}

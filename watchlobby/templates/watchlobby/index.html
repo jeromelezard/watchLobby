@@ -1,0 +1,25 @@
+{% extends "watchlobby/layout.html" %}
+
+{% load static %}
+{% load sass_tags %}
+{% block body %}
+<div class="box_container">
+<div class="create_box" id="create">
+    <h1>Create Room</h1>
+</div>
+</div>
+</div>
+<script>
+    const create = document.getElementById('create');
+    create.addEventListener('click', event => {
+        fetch('create_room', {
+            method: 'POST',
+        })
+        .then(response => response.json())
+        .then(result => {
+            console.log(result);
+            window.location.href = `/room/${result['room_url']}`
+        })
+    })
+</script>
+{% endblock %}
