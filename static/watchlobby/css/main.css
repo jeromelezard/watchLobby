@@ -305,6 +305,27 @@ input, select {
 *::-webkit-scrollbar-thumb {        
   box-shadow: inset 0 0 0 10px;
 }*/
+/* width */
+::-webkit-scrollbar {
+  width: 5px;
+  padding: 10px; }
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: transparent; }
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #B0B3B8;
+  border-radius: 14px;
+  opacity: 0;
+  transition: opacity 0.2s  ease; }
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  opacity: 1;
+  background: #d5e2ee; }
+
 .chat_list {
   background-color: #3A3B3C;
   font-family: inherit;
@@ -312,7 +333,6 @@ input, select {
   display: flex;
   flex-flow: column nowrap;
   align-items: flex-end;
-  overflow: auto;
   overflow-x: hidden;
   height: 100%;
   width: 100%;
@@ -448,12 +468,14 @@ input, select {
     padding: 0; }
   .player_container:fullscreen .bar_container {
     margin: 0;
+    z-index: 99999;
     justify-content: space-around; }
     .player_container:fullscreen .bar_container .open_chat {
-      display: flex; }
+      display: flex;
+      position: relative; }
   .player_container:fullscreen .player_overlay {
     position: absolute;
-    z-index: 9999;
+    z-index: 1;
     right: 0;
     top: 0;
     height: 100%;
@@ -714,5 +736,16 @@ iframe {
   left: 10px;
   display: none;
   cursor: pointer; }
+
+#chat_notify_fullscreen {
+  width: 10px;
+  height: 10px;
+  border-radius: 50px;
+  background-color: #ff4141;
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: -4px; }
 
 /*# sourceMappingURL=main.css.map */
