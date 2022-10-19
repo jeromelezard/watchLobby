@@ -46,9 +46,13 @@
 {% endblock %}
 {% block body %}
 
-{{ room_info.room_url|json_script:"room_url" }}
-{{ room_info.current_vid|json_script:"current_vid" }}
+<!-- {{ room_info.room_url|json_script:"room_url" }}
+{{ room_info.current_vid|json_script:"current_vid" }} -->
+{{ video_id|json_script:"video_id" }}
 {{ request.session.username|json_script:"current_user" }}
+{{ last_time|json_script:"last_time"}}
+{{ status|json_script:"status"}}
+{{ timestamp|json_script:"timestamp"}}
 
 <div class="room_container" id="room_container">
     <div class="player_container" id="player_container_id">

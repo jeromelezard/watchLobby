@@ -1,8 +1,10 @@
 //django backend variables 
 
-const room_name = JSON.parse(document.getElementById('room_url').textContent); 
-const vid_id = JSON.parse(document.getElementById('current_vid').textContent); 
-const current_user = JSON.parse(document.getElementById('current_user').textContent); 
+const vid_id = JSON.parse(document.getElementById('video_id').textContent); 
+var current_user = JSON.parse(document.getElementById('current_user').textContent); 
+let vid_time = parseInt(JSON.parse(document.getElementById('last_time').textContent));
+let vid_status = JSON.parse(document.getElementById('status').textContent);
+let timestamp = parseInt(JSON.parse(document.getElementById('timestamp').textContent));
 
 //html attribute variables
 let user_header = document.getElementById('current_username');
@@ -19,6 +21,101 @@ const chat_notify_fullscreen = document.getElementById('chat_notify_fullscreen')
 let minimized = true;
 let on_user_tab = false; 
 
+//get uuid from url
+let url = window.location.href;
+const room_name = url.split('/')[4];
+
+/**
+ * initialise the iframe player according to the iframe api documentation
+ */
+ var tag = document.createElement('script');
+ tag.src = "https://www.youtube.com/iframe_api";
+ var firstScriptTag = document.getElementsByTagName('script')[0];
+ firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+ var player;
+ var time_total;
+ var timeout_setter; // set timeout variable that is used to move the progress bar every second
+ 
+function onYouTubeIframeAPIReady() {
+    player = new YT.Player('video_player', {
+         height: '608',                                  
+         width: '1080',                                  
+         videoId: vid_id, 
+         playerVars: {
+             'playsinline': 1,
+             'autoplay': 1,
+             'disablekb': 1, // disable keyboard shortcuts 
+             'controls': 0, // hide youtube default controls
+             'rel': 0, // dont show related videos
+             'fs': 0, // dont allow fullscreen by double clicking the video
+             'mute': 1, // has to be enabled to allow autoplay 
+     },  
+     events: {
+         'onReady': onPlayerReady,
+         'onStateChange': onPlayerStateChange
+     }
+     });
+}
+function onPlayerReady(event) {
+    // when loaded, volume and pause status checked to make sure video loads with correct icons
+    check_volume(player.getVolume());
+    check_pause();    
+
+    // move the custom progress bar to correct position
+    move_progress();
+
+    // if video is paused when joining, go to time and pause video
+    if (vid_status == 0){
+        console.log('going to ', vid_time);
+        player.playVideo();
+        player.pauseVideo();
+        player.seekTo(vid_time, true);
+
+    // if video is playing when joining, calculate correct time to go to
+    } else if (vid_status == 1) {   
+        player.seekTo((((Math.floor(Date.now() / 1000)) - timestamp) + vid_time), true);
+        player.playVideo();
+
+    }
+} 
+ 
+ /**
+  * runs when any change occurs with the youtube video:
+  * pausing, playing, buffering, ending video, starting video
+  * @param event data on what changed the player state
+  */
+ function onPlayerStateChange(event) {
+     check_volume(player.getVolume());
+     check_pause();
+     if (event.data == YT.PlayerState.PAUSED) {
+         // hide the overlay div when paused so the user can close the "more videos" option that appears that cannot be disabled
+         document.getElementById('player_overlay').style.display = "none";
+ 
+         // if the event thats fired is pausing, pause video for all users connected
+        //  webSocket.send(JSON.stringify({
+        //      'action': 'pause',
+        //      'value': 'pause',
+        //      'time': Math.floor(player.getCurrentTime()),
+        //  }));
+         clearTimeout(timeout_setter);
+     } 
+ 
+     if (event.data == YT.PlayerState.PLAYING) {
+         // re set the overlay 
+         document.getElementById('player_overlay').style.display = "block";
+         webSocket.send(JSON.stringify({
+             'action': 'play',
+             'value': 'play',
+             'time': Math.floor(player.getCurrentTime()),
+         }));
+         move_progress();
+     }
+     if (event.data == YT.PlayerState.ENDED) {
+         clearTimeout(timeout_setter);
+     }
+    
+ }
+
 
 // make websocket connection 
 const webSocket = new WebSocket(
@@ -30,9 +127,10 @@ const webSocket = new WebSocket(
 
 /** 
  * TODO: once backend user system reworked 
- * * make sure place of video sent out after user buffers, so they get taken to the right place
- * * when user loads, video plays at where video is playing for other users, or paused if all paused
- * * fix username change
+ * * make time synchronising much better
+ *  when user loads, video plays at where video is playing for other users, or paused if all paused
+ *  fix username change
+ * ? fix user list (users not getting deleted properly)
  * 
  * TODO BIG:
  *  chat overlay when fullscreen
@@ -48,6 +146,9 @@ const webSocket = new WebSocket(
  *  dont disappear control bar when mouse is hovered over it 
  *  fix scroll bar on chat
  *  format js file properly
+ * * muting bug
+ * * space bar 
+ * * l and j maybe?
 */
 
 function send_payload(action, value) {
@@ -86,15 +187,16 @@ webSocket.onmessage = function (e) {
                     create_message(data.message, data.user);
                 }
                 break;
-            case "user_list":
-
-                console.log("user joining: ", data.users);
-                for (let i = 0; i < data.users.length; i++) {
-                    add_online_user(data.users[i]);
+            case "room_info":
+                let parsed_dict = JSON.parse(data.dict)
+                let user_list = parsed_dict['users'];
+                for (let i = 0; i < user_list.length; i++) {
+                    add_online_user(user_list[i]);
                 }
                 break;
 
             case "user_join":
+                
                 add_online_user(data.user);
                 break; 
 
@@ -108,13 +210,16 @@ webSocket.onmessage = function (e) {
                 break;
 
             case "url_change":
+                console.log("new url ", data.new_url);
                 player.loadVideoById(data.new_url, 0);
                 player.seekTo(0, true);
                 break;
 
-            case "play_pause":
-                if (data.control == "play") player.playVideo();
-                if (data.control == "pause") player.pauseVideo();
+            case "play":
+                player.playVideo();
+                break;
+            case "pause":
+                player.pauseVideo();
                 break;
 
             case "seek":
@@ -131,7 +236,6 @@ if (username_tags[current_user] == null) {
     username_tags[current_user].push(user_header);
     
 }
-
 
 
 
@@ -208,6 +312,8 @@ function change_username(old_username, new_username) {
 
     //delete instance of old username 
     delete username_tags[old_username];
+
+    document.getElementById(old_username).id = new_username;
 }
 
 /**
@@ -303,13 +409,29 @@ document.getElementById('chat_button').addEventListener('click', e => {
 // changing username
 document.getElementById('username_submit').addEventListener('click', e => {
     let new_username = document.getElementById('username_input_text').value;
+    
+    fetch('/change_username', {
+        method: 'POST',
+        body: JSON.stringify({
+            username: new_username,
+            room_name: room_name
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result['response']) {
+            current_user = new_username;
+            send_payload('username', new_username);
 
+        } else {
+            return ;
+        }
+    })
     // hide dropdown input field if value is submitted
     document.getElementById('dropdown_checkbox').checked = false;
     document.getElementById('username_input_text').value = '';
 
     // send new username to the websocket
-    send_payload('username', new_username);
 });
 
 // auto focus the text field once it comes into view
@@ -356,75 +478,9 @@ function getId(url) {
     : null;
 }
 
-/**
- * initialise the iframe player according to the iframe api documentation
- */
-var tag = document.createElement('script');
-tag.src = "https://www.youtube.com/iframe_api";
-var firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-var player;
-var time_total;
-var timeout_setter; // set timeout variable that is used to move the progress bar every second
 
-function onYouTubeIframeAPIReady() {
-    player = new YT.Player('video_player', {
-        height: '607.5',                                  
-        width: '1080',                                  // TODO figure out how to change size dynamically for mobile use
-        videoId: vid_id, 
-        playerVars: {
-            'playsinline': 1,
-            'autoplay': 0,
-            'disablekb': 1, // disable keyboard shortcuts 
-            'controls': 0, // hide youtube default controls
-            'rel': 0, // dont show related videos
-            'fs': 0, // dont allow fullscreen by double clicking the video
-        
-    },  
-    events: {
-        'onReady': onPlayerReady,
-        'onStateChange': onPlayerStateChange
-    }
-    });
-}
 
-function onPlayerReady(event) {
-    // when loaded, volume and pause status checked to make sure video loads with correct icons
-    check_volume(player.getVolume());
-    check_pause();
 
-    // move the custom progress bar to correct position
-    move_progress();
-} 
-
-/**
- * runs when any change occurs with the youtube video:
- * pausing, playing, buffering, ending video, starting video
- * @param event data on what changed the player state
- */
-function onPlayerStateChange(event) {
-    check_volume(player.getVolume());
-    check_pause();
-    if (event.data == YT.PlayerState.PAUSED) {
-        // hide the overlay div when paused so the user can close the "more videos" option that appears that cannot be disabled
-        document.getElementById('player_overlay').style.display = "none";
-
-        // if the event thats fired is pausing, pause video for all users connected
-        send_payload('play_pause', 'pause');
-        clearTimeout(timeout_setter);
-    } 
-
-    if (event.data == YT.PlayerState.PLAYING) {
-        // re set the overlay 
-        document.getElementById('player_overlay').style.display = "block";
-
-        send_payload('play_pause', 'play');
-        move_progress();
-    }
-    if (event.data == YT.PlayerState.ENDED) {
-        clearTimeout(timeout_setter);
-    }
-}
 
 const checkbox = document.getElementById('open_chat_checkbox');
 const open_chat = document.getElementById('open_chat');
@@ -635,9 +691,17 @@ function check_pause() {
  */
 function play_or_pause() {
     if (check_pause() == 1) {
-        send_payload('play_pause', 'play');
+        webSocket.send(JSON.stringify({
+            'action': 'play',
+            'value': 'play',
+            'time': Math.floor(player.getCurrentTime()),
+        }));
     } else if (check_pause() == 0) {
-        send_payload('play_pause', 'pause');
+        webSocket.send(JSON.stringify({
+            'action': 'pause',
+            'value': 'pause',
+            'time': Math.floor(player.getCurrentTime()),
+        }));
     }
 }
 
