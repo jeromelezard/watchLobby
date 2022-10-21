@@ -16,7 +16,7 @@ const user_list = document.getElementById('user_list');
 const user_count = document.getElementById('user_count');
 const chat_notify = document.getElementById('chat_notify');
 const chat_notify_fullscreen = document.getElementById('chat_notify_fullscreen');
-
+let state_changes = 0;
 // determines if a notification dot should be shown
 let minimized = true;
 let on_user_tab = false; 
@@ -35,7 +35,7 @@ const room_name = url.split('/')[4];
  var player;
  var time_total;
  var timeout_setter; // set timeout variable that is used to move the progress bar every second
- 
+
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('video_player', {
          height: '608',                                  
@@ -58,21 +58,32 @@ function onYouTubeIframeAPIReady() {
 }
 function onPlayerReady(event) {
     // when loaded, volume and pause status checked to make sure video loads with correct icons
-    check_volume(player.getVolume());
+    check_volume(0);
     check_pause();    
-
     // move the custom progress bar to correct position
     move_progress();
-
+    while (event.data == YT.PlayerState.BUFFERING) {
+        console.log("buffering");
+    }
     // if video is paused when joining, go to time and pause video
     if (vid_status == 0){
         console.log('going to ', vid_time);
-        player.playVideo();
+        // player.playVideo();
         player.pauseVideo();
+        // player.unMute();
+        check_volume(player.getVolume());
+        console.log("current volume ", player.getVolume());
+
         player.seekTo(vid_time, true);
+        video_progress.innerHTML = convert_to_mins_and_secs(Math.round(vid_time), 0) + ' : ' + convert_to_mins_and_secs(player.getDuration(), 1); 
+
+        barProgress.style.width = `${((vid_time/player.getDuration()) * 100)}%`;
+
+
 
     // if video is playing when joining, calculate correct time to go to
     } else if (vid_status == 1) {   
+        
         player.seekTo((((Math.floor(Date.now() / 1000)) - timestamp) + vid_time), true);
         player.playVideo();
 
@@ -85,29 +96,31 @@ function onPlayerReady(event) {
   * @param event data on what changed the player state
   */
  function onPlayerStateChange(event) {
-     check_volume(player.getVolume());
      check_pause();
      if (event.data == YT.PlayerState.PAUSED) {
          // hide the overlay div when paused so the user can close the "more videos" option that appears that cannot be disabled
          document.getElementById('player_overlay').style.display = "none";
- 
-         // if the event thats fired is pausing, pause video for all users connected
-        //  webSocket.send(JSON.stringify({
-        //      'action': 'pause',
-        //      'value': 'pause',
-        //      'time': Math.floor(player.getCurrentTime()),
-        //  }));
+
+         check_volume(player.getVolume());
          clearTimeout(timeout_setter);
      } 
- 
      if (event.data == YT.PlayerState.PLAYING) {
+        state_changes++;
+        console.log(state_changes);
          // re set the overlay 
          document.getElementById('player_overlay').style.display = "block";
-         webSocket.send(JSON.stringify({
-             'action': 'play',
-             'value': 'play',
-             'time': Math.floor(player.getCurrentTime()),
-         }));
+         check_volume(player.getVolume());
+
+        // websocket send here needs to run so that the user is able to click the iframe to pause for everyone
+        // however joining the room will trigger this, sending a new time so the state_changes variables checks if its the initial join
+        if (state_changes > 1){
+            
+            webSocket.send(JSON.stringify({
+                'action': 'play',
+                'value': 'play',
+                'time': Math.floor(player.getCurrentTime()),
+            }));
+        }
          move_progress();
      }
      if (event.data == YT.PlayerState.ENDED) {
@@ -127,28 +140,32 @@ const webSocket = new WebSocket(
 
 /** 
  * TODO: once backend user system reworked 
- * * make time synchronising much better
+ * * check for lag
  *  when user loads, video plays at where video is playing for other users, or paused if all paused
  *  fix username change
- * ? fix user list (users not getting deleted properly)
+ *  fix user list (multiple tab issue)
  * 
  * TODO BIG:
  *  chat overlay when fullscreen
  * 
  * TODO: smaller fixed
- *  change tab design (?)
+ * ? buffering look
+ * ? check if has to be muted 
  *  find workaround for fullscreen control bar bug
  *  make control bar same size as user input
  *  MAKE IFRAME RESPONSIVE 
  *  make mobile friendly
  *  fix video time bug, check for hours
- * * fix change url input from being selected (make display none)
+ *  fix change url input from being selected (make display none)
  *  dont disappear control bar when mouse is hovered over it 
  *  fix scroll bar on chat
  *  format js file properly
- * * muting bug
- * * space bar 
- * * l and j maybe?
+ *  muting bug
+ *  space bar 
+ * * spacebar glitch
+ *  progress bar seek immediately 
+ * * chat username not hiding for more than 2 users 
+ * * make progress bar better
 */
 
 function send_payload(action, value) {
@@ -190,17 +207,19 @@ webSocket.onmessage = function (e) {
             case "room_info":
                 let parsed_dict = JSON.parse(data.dict)
                 let user_list = parsed_dict['users'];
+                console.log("vid info ", parsed_dict);
                 for (let i = 0; i < user_list.length; i++) {
                     add_online_user(user_list[i]);
                 }
                 break;
 
             case "user_join":
-                
                 add_online_user(data.user);
                 break; 
 
             case "user_leave":
+                let users = JSON.parse(data.user_list)['users'];
+                if (count_in_array(users, data.user) > 1) break;
                 remove_online_user(data.user);
                 break;
 
@@ -238,8 +257,15 @@ if (username_tags[current_user] == null) {
 }
 
 
-
-
+function count_in_array(array, item) {
+    let count = 0;
+    for (let i = 0; i < array.length; i++) {
+        if (array[i] === item) {
+            count++;
+        }
+    }
+    return count;
+}
 /**
 * * display the message received by the websocket in the <ul> 
 */
@@ -406,10 +432,15 @@ document.getElementById('chat_button').addEventListener('click', e => {
     chat_notify.style.display = 'none';
 });
 
+function only_spaces(str) {
+    return /^\s*$/.test(str);
+}
 // changing username
 document.getElementById('username_submit').addEventListener('click', e => {
     let new_username = document.getElementById('username_input_text').value;
-    
+    if (only_spaces(new_username)){
+        return ;
+    }
     fetch('/change_username', {
         method: 'POST',
         body: JSON.stringify({
@@ -435,11 +466,40 @@ document.getElementById('username_submit').addEventListener('click', e => {
 });
 
 // auto focus the text field once it comes into view
-document.getElementById('change_url_text').addEventListener('click', e => {
-    if (document.getElementById('change_url_checkbox').checked == false){
-        document.getElementById('new_url').focus();
+
+
+user_header.addEventListener('click', (e) => {
+    if (document.getElementById('dropdown_checkbox').checked == false) {
+        setTimeout(() => document.getElementById('username_input_text').focus(), 5);
     }
 });
+document.getElementById('username_input_text').addEventListener('keyup', e => {
+    if (e.key === "Enter") {  // enter key
+        document.getElementById('username_submit').click();
+    }
+});
+
+
+document.getElementById('change_url_text').addEventListener('click', e => {
+    if (document.getElementById('change_url_checkbox').checked == false){
+        document.getElementById('change_url_textbox').style.display = 'flex';
+        document.getElementById('new_url').focus();
+    }
+    if (document.getElementById('change_url_checkbox').checked == true) {
+        setTimeout(() => document.getElementById('change_url_textbox').style.display = 'none', 250);
+    }
+});
+
+document.getElementById('change_url_text').addEventListener('keydown', e => {
+    if (e.key = " " || e.key == "Enter" || e.key == "Spacebar") {
+        document.getElementById('change_url_text').click();
+    }
+});
+user_header.addEventListener('keydown', e => {
+    if (e.key = " " || e.key == "Enter" || e.key == "Spacebar") {
+        user_header.click();
+    }
+})
 
 // submitting new url to watch
 document.getElementById('url_submit').addEventListener('click', e => {
@@ -464,6 +524,7 @@ document.getElementById('new_url').addEventListener('keyup', e => {
         document.getElementById('url_submit').click();
     }
 });
+
 
 /**
  * 
@@ -587,8 +648,11 @@ const volume_progress = document.getElementById('volume_progress');
 let volume_dragging = false;
 volume_bar.addEventListener('mousedown', event => {
     volume_dragging = true;
+    if (player.isMuted()) {
+        player.unMute();
+    }
     event.preventDefault()
-})
+});
 
 volume_bar.addEventListener('click', change_volume);
 
@@ -612,7 +676,6 @@ function change_volume(event) {
     if (percent > 1) percent = 1;
     if (percent < 0) percent = 0;
     let volume =  percent * 100;
-    volume_progress.style.height = `${(volume)}%`;
     player.setVolume(volume);
 
     // checks which volume icon to use
@@ -625,37 +688,68 @@ function change_volume(event) {
  * @param volume the new volume of the video for the client
  */
 function check_volume(volume) {
-    if (volume < 50 && volume > 0) {
+    if (volume < 50 && volume > 0 && !player.isMuted()) {
         document.getElementById('volume_up').style.display = 'none';
         document.getElementById('volume_down').style.display = 'flex';
         document.getElementById('volume_mute').style.display = 'none';
+        volume_progress.style.height = `${(volume)}%`;
+
+        console.log("checked half", volume);
     } else if (volume == 0 || player.isMuted()) {
         document.getElementById('volume_up').style.display = 'none';
         document.getElementById('volume_down').style.display = 'none';
         document.getElementById('volume_mute').style.display = 'flex';
-    } else {
+        volume_progress.style.height = `0%`;
+        console.log("checked muted", volume);
+
+    } else if (volume >= 50 && !player.isMuted()) {
         document.getElementById('volume_up').style.display = 'flex';
         document.getElementById('volume_down').style.display = 'none';
         document.getElementById('volume_mute').style.display = 'none';
+        volume_progress.style.height = `${(volume)}%`;
+        console.log("checked full", volume);
     }
 }
 
 // if volume icon clicked, toggle mute
 volume_button.addEventListener('click', e => {
+    console.log("volume ", player.getVolume());
+    console.log("muted? ", player.isMuted());
     if (player.isMuted()) {
-        player.unMute()
-
         // if unmuting, get the volume the user had the player at before they muted it.
         let volume = player.getVolume();
+        
+        player.unMute();
+
+
 
         // set height of volume bar to old volume and check which icon it corresponds to
-        volume_progress.style.height = `${volume}%`;
-        check_volume(volume);
+        if (volume < 50 && volume > 0) {
+            document.getElementById('volume_up').style.display = 'none';
+            document.getElementById('volume_down').style.display = 'flex';
+            document.getElementById('volume_mute').style.display = 'none';
+            volume_progress.style.height = `${(volume)}%`;
+    
+            console.log("checked half", volume);
+        } else if (volume == 0) {
+            document.getElementById('volume_up').style.display = 'none';
+            document.getElementById('volume_down').style.display = 'none';
+            document.getElementById('volume_mute').style.display = 'flex';
+            volume_progress.style.height = `0%`;
+            console.log("checked muted", volume);
+    
+            volume_progress.style.height = '0%';
+        } else if (volume >= 50) {
+            document.getElementById('volume_up').style.display = 'flex';
+            document.getElementById('volume_down').style.display = 'none';
+            document.getElementById('volume_mute').style.display = 'none';
+            volume_progress.style.height = `${(volume)}%`;
+            console.log("checked full", volume);
+        }
 
     } else {
         // mute player
         player.mute();
-        volume_progress.style.height = '0%';
 
         // set icon to muted
         check_volume(0);
@@ -665,8 +759,6 @@ volume_button.addEventListener('click', e => {
 // check whether to play or pause video if button is clicked or if overlay is clicked
 document.getElementById('play_pause').addEventListener('click', play_or_pause);
 document.getElementById('player_overlay').addEventListener('click', play_or_pause);
-
-
 
 /**
  * checks whether to play video or pause
@@ -714,6 +806,9 @@ window.addEventListener('keyup', evt => {
     // ignore when user is typing in input fields
     if (!formElements.includes(evt.target.tagName) && evt.key == "f") {
       toggle_fullscreen();
+    } 
+    if (!formElements.includes(evt.target.tagName) && (evt.key == " " || evt.key == "k")) {
+        play_or_pause();
     } 
 });
     

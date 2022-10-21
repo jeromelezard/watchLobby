@@ -2,10 +2,7 @@ from django.shortcuts import render
 import time
 import json
 import math
-import calendar
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from .models import *
 from .consumers import ChatRoomConsumer
@@ -16,12 +13,10 @@ from django.urls import reverse
 # Create your views here.
 def index(request):
     try:
-        request.session['username']
+        request.session['username'] 
     except:
         request.session['username'] = 'User-' + secrets.token_hex(nbytes=2).upper()
-        new_user = Username(username=request.session['username'])
-        new_user.save()
-    print(request.session['username'])
+        
     return render(request, "watchlobby/index.html")
 
 
@@ -34,14 +29,15 @@ def room(request, room_name):
         request.session['username']
     except:
         request.session['username'] = 'User-' + secrets.token_hex(nbytes=2).upper()
-        new_user = Username(username=request.session['username'])
-        new_user.save()
 
-    print("from views.py ", ChatRoomConsumer.rooms[room_name])
-    video_id = ChatRoomConsumer.rooms[room_name]['video_id']
-    last_time = ChatRoomConsumer.rooms[room_name]['last_time']
-    status = ChatRoomConsumer.rooms[room_name]['status']
-    timestamp = ChatRoomConsumer.rooms[room_name]['timestamp']
+    #if request.session['username'] in room_info['users']:
+    #    return HttpResponseRedirect(reverse('error'))
+
+    print("from views.py ", room_info)
+    video_id = room_info['video_id']
+    last_time = room_info['last_time']
+    status = room_info['status']
+    timestamp = room_info['timestamp']
     
     return render(request, "watchlobby/room.html", {
         'video_id': video_id,
@@ -59,7 +55,7 @@ def create_room(request):
     room_id = uuid.uuid4()
     new_room = {str(room_id): {
         'video_id': 'fXb02MQ78yQ',
-        'users': [request.session['username']],
+        'users': [],
         'status': 0, # 1 for playing, 0 for paused
         'last_time': 0, # seconds of the video elapsed when paused or when last played by user
         'timestamp': math.floor(time.time()),
@@ -72,8 +68,6 @@ def create_room(request):
 @csrf_exempt
 def change_username(request):
     data = json.loads(request.body)
-    print(request.session['username'])
-    print(data.get('username'))
     room_name = data.get('room_name')
     username = data.get('username') 
     if data.get('username') in ChatRoomConsumer.rooms[room_name]['users']:

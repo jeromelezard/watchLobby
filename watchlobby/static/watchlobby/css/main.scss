@@ -741,6 +741,7 @@ iframe {
     &:hover .volume_range_container {
         display: flex;
     }
+    
 }
 
 .open_chat {
@@ -760,7 +761,7 @@ iframe {
     // margin-bottom: 40px;
     margin-right: 5px;
     
-    &:hover {
+    &:hover, &:active, &:focus-within {
         display: flex;
     }
 }
@@ -833,7 +834,7 @@ iframe {
         margin: 0;
         width: 0px;
         transition: width 0.25s ease;
-        display: flex;
+        display: none;
         flex-direction: row;
         align-items: center;
         justify-content: center;

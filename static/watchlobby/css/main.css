@@ -609,7 +609,7 @@ iframe {
   justify-content: center;
   position: absolute;
   margin-right: 5px; }
-  .volume_range_container:hover {
+  .volume_range_container:hover, .volume_range_container:active, .volume_range_container:focus-within {
     display: flex; }
 
 .volume_icons {
@@ -675,7 +675,7 @@ iframe {
     margin: 0;
     width: 0px;
     transition: width 0.25s ease;
-    display: flex;
+    display: none;
     flex-direction: row;
     align-items: center;
     justify-content: center;

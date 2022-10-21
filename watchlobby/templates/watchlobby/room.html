@@ -7,7 +7,7 @@
     <div class="change_url" id="change_url_nav">
         <input type="checkbox" id="change_url_checkbox">
         <label class="change_url__face" for="change_url_checkbox">
-            <div class="change_url__text" id="change_url_text">Change Video</div>
+            <div role="button" tabindex="0" class="change_url__text" id="change_url_text">Change Video</div>
         </label>
             <div class="change_url__textbox" id="change_url_textbox">
                 <input type="text" class="new_url" id="new_url" placeholder="Enter Video URL... ">
@@ -27,7 +27,7 @@
             <div class="dropdown">
                 <input type="checkbox" id="dropdown_checkbox">
                 <label class="dropdown__face" for="dropdown_checkbox">
-                    <div class="dropdown__text" id="current_username">{{request.session.username}}</div>
+                    <div role="button" tabindex="0" class="dropdown__text" id="current_username">{{request.session.username}}</div>
                 </label>
                 <ul class="dropdown__items">
                     <li>

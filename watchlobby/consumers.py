@@ -6,6 +6,9 @@ from asgiref.sync import async_to_sync
 from .models import *
 from channels.generic.websocket import WebsocketConsumer
 import math
+from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import reverse
+
 
 
 class ChatRoomConsumer(WebsocketConsumer):
@@ -25,15 +28,17 @@ class ChatRoomConsumer(WebsocketConsumer):
         self.room_group_name = 'chat_%s' % self.room_name
         self.room = ChatRoomConsumer.rooms[self.room_name]
         self.user = self.scope['session']['username']
-        #self.user = Username.objects.get(username=self.scope['session']['username'])
         self.accept()
-        #print("room itself", self.room)
         async_to_sync(self.channel_layer.group_add)(
             self.room_group_name, 
             self.channel_name
         )
         print("connected")
+        # stop running if already in room 
+
         if self.user is not None:
+            #if self.user not in self.room['users']:
+            self.room['users'].append(self.user)
             
             # send the join event to the room
             async_to_sync(self.channel_layer.group_send)(
@@ -43,9 +48,8 @@ class ChatRoomConsumer(WebsocketConsumer):
                     'user': self.user,
                 }
             )
-            if self.user not in self.room['users']:
-                self.room['users'].append(self.user)    
-        print(self.room)
+            
+        print("joined room", self.room)
 
         self.send(json.dumps({
             'type': 'room_info',
@@ -53,6 +57,7 @@ class ChatRoomConsumer(WebsocketConsumer):
         }))
 
     def disconnect(self, close_code):
+
         async_to_sync(self.channel_layer.group_discard)(
             self.room_group_name,
             self.channel_name
@@ -67,10 +72,11 @@ class ChatRoomConsumer(WebsocketConsumer):
                 {
                     'type': 'user_leave',
                     'user': self.user,
+                    'user_list': json.dumps(ChatRoomConsumer.rooms[self.room_name], default=str),
                 }
             )
-            print(self.user)
             self.room['users'].remove(self.user)    
+            print("left room", self.user)
 
 
 
@@ -115,10 +121,10 @@ class ChatRoomConsumer(WebsocketConsumer):
             )
 
         elif action == "pause":
-            print("pause ", self.room)
 
             self.room['status'] = 0
             self.room['last_time'] = text_data_json['time']
+            print("pause ", self.room)
             async_to_sync(self.channel_layer.group_send)(
                 self.room_group_name,
                 {
@@ -126,11 +132,12 @@ class ChatRoomConsumer(WebsocketConsumer):
                     'control': text_data_json['value'],
                 }
             )
+            
 
         elif action == "play":
-            print("play", self.room)
             self.room['status'] = 1
             self.room['timestamp'] = math.floor(time.time())
+            print("play", self.room)
             async_to_sync(self.channel_layer.group_send)(
                 self.room_group_name,
                 {
@@ -138,6 +145,7 @@ class ChatRoomConsumer(WebsocketConsumer):
                     'control': text_data_json['value'],
                 }
             )
+            
         elif action == "seek":
             self.room['last_time'] = int(text_data_json['value'])
             print("seek ", self.room)
