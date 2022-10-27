@@ -517,7 +517,7 @@ input, select {
     margin: 0; }
 
 .bar {
-  width: 75%;
+  width: 65%;
   height: 10px;
   background-color: rgba(226, 225, 225, 0.7);
   border-radius: 20px;
@@ -572,7 +572,8 @@ input, select {
 .fullscreen {
   display: flex;
   justify-content: center;
-  align-items: center; }
+  align-items: center;
+  margin-right: 5px; }
   .fullscreen .exit_fullscreen {
     display: none; }
 

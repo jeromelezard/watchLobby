@@ -4,4 +4,3 @@ from .models import *
 
 
 admin.site.register(Room)
-admin.site.register(Username)

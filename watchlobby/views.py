@@ -30,10 +30,8 @@ def room(request, room_name):
     except:
         request.session['username'] = 'User-' + secrets.token_hex(nbytes=2).upper()
 
-    #if request.session['username'] in room_info['users']:
-    #    return HttpResponseRedirect(reverse('error'))
+   
 
-    print("from views.py ", room_info)
     video_id = room_info['video_id']
     last_time = room_info['last_time']
     status = room_info['status']
@@ -60,9 +58,9 @@ def create_room(request):
         'last_time': 0, # seconds of the video elapsed when paused or when last played by user
         'timestamp': math.floor(time.time()),
     }}
-
+    new_room_model = Room.objects.create(room_url=room_id, current_vid='fXb02MQ78yQ')
+    new_room_model.save()
     ChatRoomConsumer.rooms.update(new_room)
-    print("from views create ", ChatRoomConsumer.rooms)
     return JsonResponse({'room_url': str(room_id)})
 
 @csrf_exempt

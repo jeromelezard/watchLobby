@@ -46,8 +46,7 @@
 {% endblock %}
 {% block body %}
 
-<!-- {{ room_info.room_url|json_script:"room_url" }}
-{{ room_info.current_vid|json_script:"current_vid" }} -->
+
 {{ video_id|json_script:"video_id" }}
 {{ request.session.username|json_script:"current_user" }}
 {{ last_time|json_script:"last_time"}}

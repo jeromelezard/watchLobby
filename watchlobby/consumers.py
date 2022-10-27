@@ -1,13 +1,10 @@
 import time
-from ssl import CHANNEL_BINDING_TYPES
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
 from .models import *
 from channels.generic.websocket import WebsocketConsumer
 import math
-from django.http import HttpResponse, HttpResponseRedirect
-from django.urls import reverse
 
 
 
@@ -49,7 +46,6 @@ class ChatRoomConsumer(WebsocketConsumer):
                 }
             )
             
-        print("joined room", self.room)
 
         self.send(json.dumps({
             'type': 'room_info',
@@ -64,7 +60,6 @@ class ChatRoomConsumer(WebsocketConsumer):
         )
 
         if self.user is not None:
-            print("user leaving room")
 
             # send the leave event to the room
             async_to_sync(self.channel_layer.group_send)(
@@ -76,7 +71,6 @@ class ChatRoomConsumer(WebsocketConsumer):
                 }
             )
             self.room['users'].remove(self.user)    
-            print("left room", self.user)
 
 
 
@@ -94,7 +88,6 @@ class ChatRoomConsumer(WebsocketConsumer):
                 )
 
         elif action == "username":
-            print("username ", self.room)
             async_to_sync(self.channel_layer.group_send)(
                     self.room_group_name,
                     {
@@ -110,7 +103,6 @@ class ChatRoomConsumer(WebsocketConsumer):
             self.room['status'] = 1
             self.room['last_time'] = 0
             self.room['timestamp'] = math.floor(time.time())
-            print("url ", self.room)
 
             async_to_sync(self.channel_layer.group_send)(
                 self.room_group_name,
@@ -124,7 +116,6 @@ class ChatRoomConsumer(WebsocketConsumer):
 
             self.room['status'] = 0
             self.room['last_time'] = text_data_json['time']
-            print("pause ", self.room)
             async_to_sync(self.channel_layer.group_send)(
                 self.room_group_name,
                 {
@@ -137,7 +128,6 @@ class ChatRoomConsumer(WebsocketConsumer):
         elif action == "play":
             self.room['status'] = 1
             self.room['timestamp'] = math.floor(time.time())
-            print("play", self.room)
             async_to_sync(self.channel_layer.group_send)(
                 self.room_group_name,
                 {
@@ -148,7 +138,6 @@ class ChatRoomConsumer(WebsocketConsumer):
             
         elif action == "seek":
             self.room['last_time'] = int(text_data_json['value'])
-            print("seek ", self.room)
             async_to_sync(self.channel_layer.group_send)(
                 self.room_group_name,
                 {

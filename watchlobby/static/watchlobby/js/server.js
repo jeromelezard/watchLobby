@@ -62,17 +62,13 @@ function onPlayerReady(event) {
     check_pause();    
     // move the custom progress bar to correct position
     move_progress();
-    while (event.data == YT.PlayerState.BUFFERING) {
-        console.log("buffering");
-    }
+    
     // if video is paused when joining, go to time and pause video
     if (vid_status == 0){
-        console.log('going to ', vid_time);
         // player.playVideo();
         player.pauseVideo();
         // player.unMute();
         check_volume(player.getVolume());
-        console.log("current volume ", player.getVolume());
 
         player.seekTo(vid_time, true);
         video_progress.innerHTML = convert_to_mins_and_secs(Math.round(vid_time), 0) + ' : ' + convert_to_mins_and_secs(player.getDuration(), 1); 
@@ -106,7 +102,6 @@ function onPlayerReady(event) {
      } 
      if (event.data == YT.PlayerState.PLAYING) {
         state_changes++;
-        console.log(state_changes);
          // re set the overlay 
          document.getElementById('player_overlay').style.display = "block";
          check_volume(player.getVolume());
@@ -138,35 +133,6 @@ const webSocket = new WebSocket(
     '/'
 );
 
-/** 
- * TODO: once backend user system reworked 
- * * check for lag
- *  when user loads, video plays at where video is playing for other users, or paused if all paused
- *  fix username change
- *  fix user list (multiple tab issue)
- * 
- * TODO BIG:
- *  chat overlay when fullscreen
- * 
- * TODO: smaller fixed
- * ? buffering look
- * ? check if has to be muted 
- *  find workaround for fullscreen control bar bug
- *  make control bar same size as user input
- *  MAKE IFRAME RESPONSIVE 
- *  make mobile friendly
- *  fix video time bug, check for hours
- *  fix change url input from being selected (make display none)
- *  dont disappear control bar when mouse is hovered over it 
- *  fix scroll bar on chat
- *  format js file properly
- *  muting bug
- *  space bar 
- * * spacebar glitch
- *  progress bar seek immediately 
- * * chat username not hiding for more than 2 users 
- * * make progress bar better
-*/
 
 function send_payload(action, value) {
     webSocket.send(JSON.stringify({
@@ -207,7 +173,6 @@ webSocket.onmessage = function (e) {
             case "room_info":
                 let parsed_dict = JSON.parse(data.dict)
                 let user_list = parsed_dict['users'];
-                console.log("vid info ", parsed_dict);
                 for (let i = 0; i < user_list.length; i++) {
                     add_online_user(user_list[i]);
                 }
@@ -224,12 +189,10 @@ webSocket.onmessage = function (e) {
                 break;
 
             case "username_change":
-                console.log("username change", data);
                 change_username(data.old_username, data.new_username);
                 break;
 
             case "url_change":
-                console.log("new url ", data.new_url);
                 player.loadVideoById(data.new_url, 0);
                 player.seekTo(0, true);
                 break;
@@ -243,7 +206,6 @@ webSocket.onmessage = function (e) {
 
             case "seek":
                 let time = data.time.substring(data.time.indexOf(':') + 1);
-                console.log("Time to seek to ", time);
                 player.seekTo(time, true);
                 break;
         }       
@@ -290,6 +252,7 @@ var create_message = function(input, user) {
         chat_message.classList.add('foreign_message');
         chat_user.classList.add('foreign_user', 'name');
     }
+    chat_message.dataset.user = user;
 
     //push the tags of any time the username is written to the users array, so changing all instances of the username is simpler
     username_tags[user].push(chat_user);
@@ -298,7 +261,7 @@ var create_message = function(input, user) {
     if (chat_box.lastElementChild.classList.contains('client_message') && !chat_message.classList.contains('foreign_message')) {
         chat_user.classList.add('hide');
     }
-    if (chat_box.lastElementChild.classList.contains('foreign_message') && !chat_message.classList.contains('client_message')) {
+    if (chat_box.lastElementChild.classList.contains('foreign_message') && !chat_message.classList.contains('client_message') && chat_box.lastElementChild.dataset.user == chat_message.dataset.user) {
         chat_user.classList.add('hide');
     }
 
@@ -340,6 +303,8 @@ function change_username(old_username, new_username) {
     delete username_tags[old_username];
 
     document.getElementById(old_username).id = new_username;
+
+    document.querySelectorAll(`[data-user='${old_username}']`).forEach(e => e.dataset.user = new_username);
 }
 
 /**
@@ -694,27 +659,22 @@ function check_volume(volume) {
         document.getElementById('volume_mute').style.display = 'none';
         volume_progress.style.height = `${(volume)}%`;
 
-        console.log("checked half", volume);
     } else if (volume == 0 || player.isMuted()) {
         document.getElementById('volume_up').style.display = 'none';
         document.getElementById('volume_down').style.display = 'none';
         document.getElementById('volume_mute').style.display = 'flex';
         volume_progress.style.height = `0%`;
-        console.log("checked muted", volume);
 
     } else if (volume >= 50 && !player.isMuted()) {
         document.getElementById('volume_up').style.display = 'flex';
         document.getElementById('volume_down').style.display = 'none';
         document.getElementById('volume_mute').style.display = 'none';
         volume_progress.style.height = `${(volume)}%`;
-        console.log("checked full", volume);
     }
 }
 
 // if volume icon clicked, toggle mute
 volume_button.addEventListener('click', e => {
-    console.log("volume ", player.getVolume());
-    console.log("muted? ", player.isMuted());
     if (player.isMuted()) {
         // if unmuting, get the volume the user had the player at before they muted it.
         let volume = player.getVolume();
@@ -724,19 +684,18 @@ volume_button.addEventListener('click', e => {
 
 
         // set height of volume bar to old volume and check which icon it corresponds to
+        // block of code repeated since the api is not registering the video as unmuted after unMute() function 
         if (volume < 50 && volume > 0) {
             document.getElementById('volume_up').style.display = 'none';
             document.getElementById('volume_down').style.display = 'flex';
             document.getElementById('volume_mute').style.display = 'none';
             volume_progress.style.height = `${(volume)}%`;
     
-            console.log("checked half", volume);
         } else if (volume == 0) {
             document.getElementById('volume_up').style.display = 'none';
             document.getElementById('volume_down').style.display = 'none';
             document.getElementById('volume_mute').style.display = 'flex';
             volume_progress.style.height = `0%`;
-            console.log("checked muted", volume);
     
             volume_progress.style.height = '0%';
         } else if (volume >= 50) {
@@ -744,7 +703,6 @@ volume_button.addEventListener('click', e => {
             document.getElementById('volume_down').style.display = 'none';
             document.getElementById('volume_mute').style.display = 'none';
             volume_progress.style.height = `${(volume)}%`;
-            console.log("checked full", volume);
         }
 
     } else {
@@ -901,7 +859,6 @@ player_container.addEventListener('fullscreenchange', e => {
     }
 });
 
-// ! control bar still disappearing even though overlay should not be present
 
 // remove or add control bar when mouse not over video
 player_container.addEventListener('mouseenter', e => {
@@ -919,7 +876,6 @@ document.getElementById('player_overlay').addEventListener('mousemove', e => {
     document.getElementById('player_overlay').style.cursor = 'auto';
     clearTimeout(timer);
     timer = setTimeout(function() {
-        console.log('stopped');
         bar_container.style.opacity = '0';
         document.getElementById('player_overlay').style.cursor = 'none';
 
